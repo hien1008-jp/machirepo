@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
     'main', 
 ]
 
@@ -133,5 +134,3 @@ LOGIN_REDIRECT_URL = '/'
 
 # ログアウト後にリダイレクトされるURL (トップページへ)
 LOGOUT_REDIRECT_URL = '/'
-
-LOGIN_REDIRECT_URL = '/home/' # または {% url 'home_redirect' %} で解決するパス

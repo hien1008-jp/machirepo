@@ -1,13 +1,8 @@
-{% load static %}
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>まちレポ</title>
-    <link rel="stylesheet" href="{% static 'main/style.css' %}"> 
-</head>
-<body class="form-page-bg">
+{% extends 'base.html' %} 
+
+{% block title %}トップページ{% endblock %} 
+
+{% block content %}
     <div class="form-container">
         <div style="text-align: center;">
             <h1 style="font-size: 2.5rem; font-weight: 700; color: var(--primary-hover-color); margin-bottom: 1rem;">まちレポ</h1>
@@ -18,5 +13,5 @@
             <a href="user/signup.html" class="link-secondary" style="margin-top: 1.5rem;">アカウントをお持ちでない方はこちら（新規登録）</a>
         </div>
     </div>
-</body>
-</html>
+
+{% endblock %}

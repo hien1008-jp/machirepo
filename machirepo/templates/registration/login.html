@@ -1,35 +1,26 @@
-{% load static %}
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ログイン - まちレポ</title>
-    <link rel="stylesheet" href="{% static 'main/style.css' %}"> 
-</head>
-<body class="form-page-bg">
+{% extends 'base.html' %} 
+
+{% block title %}ログイン{% endblock %} 
+
+{% block content %}
     <div class="form-container">
         <h2 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 2rem; text-align:center;">まちレポ ログイン</h2>
-        <div class="form-group">
-            <label for="login-email">メールアドレス</label>
-            <input type="email" id="login-email">
-        </div>
-        <div class="form-group">
-            <label for="login-password">パスワード</label>
-            <input type="password" id="login-password">
-        </div>
         
-        <!-- 
-            実際にはここでJavaScriptがメールアドレスを判定し、
-            ユーザーなら user/home.html へ、
-            管理者なら admin/admin_home.html へ遷移します。
-            デザイン確認のため、両方のボタンを設置します。
-        -->
-        <div style="margin-top: 2rem;">
-            <a href="user/home.html" class="btn btn-primary">ログイン (ユーザー)</a>
-            <a href="admin/admin_home.html" class="btn btn-primary" style="margin-top: 1rem;">ログイン (管理者)</a>
-            <a href="index.html" class="link-secondary">トップページに戻る</a>
+        <form method="post"> 
+            {% csrf_token %} 
+            {{ form.as_p }} 
+
+            {% if form.errors %}
+                <p style="color: red;">ユーザー名またはパスワードが正しくありません。</p>
+            {% endif %}
+
+            <div style="margin-top: 2rem;">
+                <button type="submit" class="btn btn-primary">ログイン</button>
+            </div>
+        </form>
+
+        <div style="margin-top: 1rem;">
+            <a href="{% url 'index' %}" class="link-secondary">トップページに戻る</a>
         </div>
     </div>
-</body>
-</html>
+{% endblock %}

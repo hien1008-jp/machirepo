@@ -1,0 +1,26 @@
+{% extends 'base.html' %} 
+
+{% block title %}ログイン{% endblock %} 
+
+{% block content %}
+    <div class="form-container">
+        <h2 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 2rem; text-align:center;">まちレポ ログイン</h2>
+        
+        <form method="post"> 
+            {% csrf_token %} 
+            {{ form.as_p }} 
+
+            {% if form.errors %}
+                <p style="color: red;">ユーザー名またはパスワードが正しくありません。</p>
+            {% endif %}
+
+            <div style="margin-top: 2rem;">
+                <button type="submit" class="btn btn-primary">ログイン</button>
+            </div>
+        </form>
+
+        <div style="margin-top: 1rem;">
+            <a href="{% url 'index' %}" class="link-secondary">トップページに戻る</a>
+        </div>
+    </div>
+{% endblock %}

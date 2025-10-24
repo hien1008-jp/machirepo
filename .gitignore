@@ -9,3 +9,4 @@ pyvenv.cfg  # 仮想環境設定ファイル
 /db.sqlite3     # ルートにある場合
 __pycache__/
 *.pyc
+venv/pyvenv.cfg

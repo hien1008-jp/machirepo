@@ -2,10 +2,14 @@
 
 from django.urls import path
 from . import views
+from django.contrib.auth.views import LogoutView
 
 urlpatterns = [
     #トップページ（未ログイン時にログインボタンを表示するページ）
     path('', views.index, name='index'), 
+
+    #ログアウト
+    path('logout/',LogoutView.as_view(), name="logout"), 
     
     #ログイン後に住民か管理者かを振り分け
     path('home/', views.home_redirect, name='home_redirect'), 

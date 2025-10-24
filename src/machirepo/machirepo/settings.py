@@ -121,11 +121,11 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # ★★★ 認証とリダイレクトの設定 ★★★
 
-# ログインURL (デフォルト: /accounts/login/)
+# ログインURL 
 LOGIN_URL = '/accounts/login/'
 
-# ログイン成功後のリダイレクト先 (振り分けビューへ)
+# ログイン成功後の遷移先
 LOGIN_REDIRECT_URL = '/home/'
 
-# ログアウト後のリダイレクト先 (トップページへ)
+# ログアウト後の遷移先 
 LOGOUT_REDIRECT_URL = '/'

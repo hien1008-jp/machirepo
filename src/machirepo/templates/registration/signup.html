@@ -4,7 +4,8 @@
 {% block title %}新規登録 - まちレポ{% endblock %}
 
 {% block content %}
-    <main class="main-content" style="display: flex; flex-direction: column;">
+<main class="main-content" style="display: flex; flex-direction: column;">
+    <div class="form-container">
         <h2 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 2rem;">新規登録</h2>
         
         <form method="post" action="{% url 'signup' %}" style="display: contents;">
@@ -47,5 +48,6 @@
                 <a href="{% url 'index' %}" class="link-secondary">戻る</a> 
             </div>
         </form>
-    </main>
+    </div>
+</main>
 {% endblock content %}

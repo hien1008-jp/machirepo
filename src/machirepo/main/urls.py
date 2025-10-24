@@ -2,6 +2,7 @@
 
 from django.urls import path
 from . import views
+
 from django.contrib.auth.views import LogoutView
 
 urlpatterns = [
@@ -23,3 +24,4 @@ urlpatterns = [
     #新規登録画面
     path('signup/', views.ResidentRegisterView.as_view(), name='signup'),
 ]
+

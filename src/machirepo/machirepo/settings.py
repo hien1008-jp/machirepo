@@ -30,7 +30,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'main',  # ★作成したmainアプリを追加
+    'main',  
 ]
 
 MIDDLEWARE = [
@@ -48,9 +48,7 @@ ROOT_URLCONF = 'machirepo.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        # ★★★ 修正箇所: templatesフォルダをDIRSに明示的に追加 ★★★
-        # これにより、テンプレートファイル 'top_base.html' や 'main/signup.html' が見つかるようになります。
-        'DIRS': [BASE_DIR / 'templates'], 
+        'DIRS': [BASE_DIR / 'templates'], #templateファイル参照
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -72,7 +70,7 @@ WSGI_APPLICATION = 'machirepo.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',#データベースはSQLITE3
     }
 }
 
@@ -95,13 +93,17 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',
+]
+
 
 # Internationalization
 # https://docs.djangoproject.com/en/4.0/topics/i18n/
 
-LANGUAGE_CODE = 'ja' # ★日本語に変更
+LANGUAGE_CODE = 'ja' 
 
-TIME_ZONE = 'Asia/Tokyo' # ★日本時間に変更
+TIME_ZONE = 'Asia/Tokyo' 
 
 USE_I18N = True
 
@@ -119,7 +121,6 @@ STATIC_URL = '/static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
-# ★★★ 認証とリダイレクトの設定 ★★★
 
 # ログインURL 
 LOGIN_URL = '/accounts/login/'

@@ -18,8 +18,8 @@ def index(request):
     return render(request, 'index.html', {})
 
 
-# ★★★ 2. ホームリダイレクト（home_redirect）: 権限による振り分け ★★★
-@login_required # ★必ずデコレーターを付ける
+#権限による振り分け
+@login_required 
 def home_redirect(request):
     # ユーザーが管理者の場合
     if request.user.is_staff or request.user.is_superuser:

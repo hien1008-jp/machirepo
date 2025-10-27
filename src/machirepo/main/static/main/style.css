@@ -285,7 +285,7 @@ body.form-page-bg {
     width: 100%;
     height: 100%;
     background-color: rgba(0, 0, 0, 0.5);
-    display: flex;
+    display: none;
     justify-content: center;
     align-items: center;
 }
@@ -298,15 +298,33 @@ body.form-page-bg {
     max-width: 400px;
     text-align: center;
 }
+/* ボタン配置 */
+.modal-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-top: 0rem;
+}
 .modal-box .btn-danger {
     background-color: #ef4444;
     color: #fff;
-    border: none;
+    border-color: #ef4444;
 }
 .modal-box .btn-danger:hover {
     background-color: #dc2626;
 }
 
+.btn-secondary {
+    background-color: #f3f4f6;
+    color: #333;
+    border: 1px solid #ccc;
+}
+/*
+.btn-danger {
+    background-color: #ef4444;
+    color: white;
+    border-color: #ef4444;
+} */
 
 /*
 ==================================================

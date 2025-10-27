@@ -1,38 +1,30 @@
-# main/views.py
-
-from django.shortcuts import render, redirect
-from django.contrib.auth.decorators import login_required 
 from django.urls import reverse_lazy 
 from django.views.generic.edit import CreateView 
 from .forms import ResidentRegistrationForm 
 from django.shortcuts import redirect
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth.decorators import login_required 
+from django.contrib.auth.models import User
+from django.http import HttpResponse
 
-
-# ★★★ 1. トップページ（index）: ログイン状態による振り分け ★★★
 def index(request):
     if request.user.is_authenticated:
-        # ログイン済みの場合、振り分けビューへリダイレクト
         return redirect('home_redirect') 
     
-    # ログインしていない場合、通常のトップページをレンダリング
     return render(request, 'index.html', {})
 
 
-#権限による振り分け
 @login_required 
 def home_redirect(request):
-    # ユーザーが管理者の場合
     if request.user.is_staff or request.user.is_superuser:
         return redirect('admin_home')
-    else: # それ以外（一般住民）の場合
+    else:
         return redirect('user_home')
 
-# ★★★ 3. 住民トップページ ★★★
 @login_required
 def user_home(request):
     return render(request, 'main/user_home.html', {})
 
-# ★★★ 4. 管理者トップページ ★★★
 @login_required
 def admin_home(request):
     return render(request, 'main/admin_home.html', {})
@@ -41,4 +33,39 @@ def admin_home(request):
 class ResidentRegisterView(CreateView):
     form_class = ResidentRegistrationForm 
     success_url = reverse_lazy('login') 
-    template_name = 'registration/signup.html' # signupに遷移するようにすること
+    template_name = 'registration/signup.html' 
+
+
+@login_required
+def admin_user_list(request):
+    if not request.user.is_staff and not request.user.is_superuser:
+        return redirect('home_redirect') 
+
+    users = User.objects.filter(is_superuser=False, is_staff=False).order_by('-date_joined')
+    
+    context = {
+        'users': users
+    }
+    return render(request, 'main/admin_users.html', context) 
+
+@login_required
+def admin_user_delete_confirm(request, user_id):
+    if not request.user.is_staff and not request.user.is_superuser:
+        return redirect('home_redirect')
+
+    target_user = get_object_or_404(User.objects.filter(is_superuser=False, is_staff=False), pk=user_id)
+
+    if request.method == 'POST':
+        target_user.delete()
+        return redirect('admin_user_delete_complete') 
+    
+    return redirect('admin_user_list')
+
+
+
+@login_required
+def admin_user_delete_complete(request):
+    if not request.user.is_staff and not request.user.is_superuser:
+        return redirect('home_redirect')
+        
+    return render(request, 'main/admin_delete_complete.html')

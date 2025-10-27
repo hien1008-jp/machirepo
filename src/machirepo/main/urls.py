@@ -1,9 +1,9 @@
 from django.urls import path
 from . import views
-from django.contrib.auth import views as auth_views # ★★★ auth_views をインポート ★★★
-from .forms import EmailAuthenticationForm # ★★★ カスタムフォームをインポート ★★★
-
+from django.contrib.auth import views as auth_views 
+from .forms import EmailAuthenticationForm 
 from django.contrib.auth.views import LogoutView
+
 
 urlpatterns = [
     # トップページ（未ログイン時にログインボタンを表示するページ）
@@ -28,4 +28,10 @@ urlpatterns = [
 
     # 新規登録画面
     path('signup/', views.ResidentRegisterView.as_view(), name='signup'),
+
+    path('manage/users/', views.admin_user_list, name='admin_user_list'),
+
+    path('manage/users/delete/<int:user_id>/', views.admin_user_delete_confirm, name='admin_user_delete_confirm'),
+
+    path('manage/users/delete/done/', views.admin_user_delete_complete, name='admin_user_delete_complete'),
 ]

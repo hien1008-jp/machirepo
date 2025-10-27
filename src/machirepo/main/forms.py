@@ -1,107 +1,139 @@
-# main/forms.py
-
 from django import forms
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import AuthenticationForm
-from django.contrib.auth import authenticate
+# from django.contrib.auth import authenticate # ★★★ この行は不要になるため削除（authenticateは使わない）
 
+
+# 新規登録フォーム (変更なし)
 class ResidentRegistrationForm(forms.ModelForm):
-    # パスワード確認なしの単一パスワードフィールドを定義
-    password = forms.CharField(label='パスワード', widget=forms.PasswordInput)
+    # ... (ResidentRegistrationForm クラスの内容は変更なし) ...
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.error_css_class = 'is-invalid' 
+        
+    password = forms.CharField(
+        label='パスワード', 
+        widget=forms.PasswordInput,
+        error_messages={'required': '入力に誤りがあります。内容を確認してください。'} 
+    )
     
-    # 氏名（単一フィールド）を定義
-    full_name = forms.CharField(label='氏名', max_length=50)
+    full_name = forms.CharField(
+        label='氏名', 
+        max_length=50,
+        error_messages={
+            'required': '入力に誤りがあります。内容を確認してください。',
+            'max_length': '入力に誤りがあります。内容を確認してください。' 
+        }
+    )
     
     class Meta:
         model = User
-        # ★★★ 修正箇所: Userモデルに存在するフィールドのみを指定 ★★★
-        # full_name と password は ModelForm 外で定義されているため、fieldsから除外
         fields = ('email', ) 
+        error_messages = {
+            'email': {
+                'required': '入力に誤りがあります。内容を確認してください。',
+                'invalid': '入力に誤りがあります。内容を確認してください。', 
+            },
+        }
         
     def clean_email(self):
-        # メールアドレスの重複チェック
         email = self.cleaned_data.get('email')
         if User.objects.filter(email=email).exists():
-            raise forms.ValidationError("このメールアドレスは既に登録されています。")
+            raise forms.ValidationError("入力に誤りがあります。内容を確認してください。")
         return email
 
+    def clean(self):
+        cleaned_data = super().clean()
+        if self._errors:
+            self._errors = {}
+            self.add_error(None, "入力に誤りがあります。内容を確認してください。") 
+        return cleaned_data
+        
     def save(self, commit=True):
-        # ModelFormのsaveメソッドを呼び出し、ユーザーオブジェクトを取得
-        # fieldsにemailのみを指定したことで、super().save()はemailだけを処理します。
         user = super().save(commit=False)
-        
-        # 1. usernameに氏名の値を設定 (前回の希望通り)
-        user.username = self.cleaned_data["full_name"] 
-        
-        # 2. パスワードのハッシュ化
+        user.username = self.cleaned_data["full_name"]
         user.set_password(self.cleaned_data["password"])
-        
-        # 3. 氏名とメールアドレスの設定
-        user.last_name = self.cleaned_data["full_name"] 
-        user.first_name = "" 
+        user.last_name = self.cleaned_data["full_name"]
+        user.first_name = ""
         user.email = self.cleaned_data["email"]
-
-        # 4. 住民アカウントとして設定
         user.is_staff = False
         user.is_superuser = False
-        
         if commit:
             user.save()
         return user
-    
 
+# main/forms.py (EmailAuthenticationForm クラス全体を置き換えてください)
 
 class EmailAuthenticationForm(AuthenticationForm):
     """
     ユーザー名ではなくメールアドレスで認証を行うフォーム。
     """
-    # フォームフィールドは AuthenticationForm のものをそのまま使用
-    # username (ラベルを「メールアドレス」に変更) と password
+    # ★★★ 修正箇所1: 認証失敗時のエラーメッセージを上書き ★★★
+    error_messages = {
+        'invalid_login': 'メールアドレスまたはパスワードが正しくありません。',
+        
+    }
 
     def __init__(self, *args, **kwargs):
+        self.request = kwargs.pop('request', None)
         super().__init__(*args, **kwargs)
-        # ラベルを「ユーザー名」から「メールアドレス」に変更
-        self.fields['username'].label = 'メールアドレス'
-
-    def clean(self):
-        # 標準のcleanメソッドをオーバーライドし、usernameの代わりにemailでユーザーを検索
         
-        username = self.cleaned_data.get('username') # ここにはユーザーが入力したメールアドレスが入る
-        password = self.cleaned_data.get('password')
+        self.fields['username'].label = 'メールアドレス'
+        self.error_css_class = 'is-invalid'
+        
+    def clean(self):
+        cleaned_data = super().clean() 
 
+        # 認証失敗時、またはフィールドエラーが存在する場合の処理
+        if self.errors:
+            
+            # 項目ごとの赤枠を強制的に付与するロジック (変更なし)
+            error_class = 'is-invalid'
+            for field_name, field in self.fields.items():
+                if field_name in self.errors:
+                    existing_classes = field.widget.attrs.get('class', '')
+                    field.widget.attrs['class'] = (existing_classes + ' ' + error_class).strip()
+            
+            # ★★★ 修正箇所2: フィールドエラーメッセージを削除/統一ロジック ★★★
+            # AuthenticationFormのエラーはすでに 'invalid_login' に上書きされているため、
+            # フィールドエラーだけをクリアし、エラーを non_field_errors に統合する
+            
+            # エラーを一時保存
+            temp_errors = self.errors.copy() 
+            
+            # フィールドエラーは表示しないのでクリア
+            self._errors = {} 
+
+            # non_field_errors（フォーム上部）に統一メッセージを再追加
+            # self.error_messages['invalid_login'] を使う
+            self.add_error(None, self.error_messages['invalid_login'])
+            
+            return cleaned_data 
+        
+        # 認証ロジック (変更なし)
+        username = self.cleaned_data.get('username')
+        password = self.cleaned_data.get('password')
+        
         if username and password:
-            self.user_cache = authenticate(self.request, username=username, password=password)
-            
-            # 標準では username でユーザー検索されるが、
-            # カスタムバックエンド (後で削除します) が存在しない前提の場合、
-            # 認証失敗後にこの clean メソッド内で手動でユーザーを検索する必要がある
-            
-            # --- カスタム認証ロジック開始 ---
             try:
-                # 入力されたusername（＝メールアドレス）でUserモデルから検索
                 user = User.objects.get(email__iexact=username)
             except User.DoesNotExist:
-                # ユーザーが見つからなければ、認証失敗としてエラーメッセージをセット
+                # このValidationErrorは上書きされた 'invalid_login' メッセージを使用
                 raise forms.ValidationError(
-                    self.error_messages['invalid_login'],
-                    code='invalid_login',
-                    params={'username': self.username_field.verbose_name},
+                    self.error_messages['invalid_login'], 
+                    code='invalid_login'
                 )
             
-            # パスワードチェック
             if user.check_password(password):
-                self.user_cache = user # 認証成功、ユーザーをキャッシュ
+                self.user_cache = user 
             else:
-                # パスワードが間違っている場合
+                # このValidationErrorも上書きされた 'invalid_login' メッセージを使用
                 raise forms.ValidationError(
-                    self.error_messages['invalid_login'],
-                    code='invalid_login',
-                    params={'username': self.username_field.verbose_name},
+                    self.error_messages['invalid_login'], 
+                    code='invalid_login'
                 )
-            # --- カスタム認証ロジック終了 ---
             
-        return self.cleaned_data
-
-    # authenticate関数を使用するために、requestオブジェクトを保存
-    def get_user(self, request=None):
-        return self.user_cache
+        return cleaned_data
+    
+    def get_user(self):
+        return getattr(self, 'user_cache', None)

@@ -7,11 +7,11 @@
 <div class="form-container">
     <h2 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 2rem; text-align:center;">まちレポ ログイン</h2>
       
-    <form method="post">
+    <form method="post" >
         {% csrf_token %}
 
         {% if form.non_field_errors %}
-            <div style="color: red; margin-bottom: 1rem;">
+            <div class="error-box">
                 {% for error in form.non_field_errors %}
                     <p>{{ error }}</p>
                 {% endfor %}
@@ -21,18 +21,12 @@
         <div class="form-group">
             <label for="{{ form.username.id_for_label }}">メールアドレス</label> 
             {{ form.username }}
-            {% if form.username.errors %}
-                <p style="color: red; font-size: 0.85rem;">{{ form.username.errors.as_text }}</p>
-            {% endif %}
-        </div>
+            </div>
         
         <div class="form-group">
             <label for="{{ form.password.id_for_label }}">パスワード</label>
             {{ form.password }}
-            {% if form.password.errors %}
-                <p style="color: red; font-size: 0.85rem;">{{ form.password.errors.as_text }}</p>
-            {% endif %}
-        </div>
+            </div>
         <div style="margin-top: 2rem;">
             <button type="submit" class="btn btn-primary">ログイン</button>
             <a href="{% url 'index' %}" class="link-secondary">トップページに戻る</a>

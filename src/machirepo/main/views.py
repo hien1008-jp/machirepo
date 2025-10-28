@@ -97,12 +97,12 @@ def photo_post_create(request):
     
     # 【ステップ1クリーンアップ】
     if request.method == 'GET':
-        # ★修正: titleもセッションクリア対象に追加★
-        keys_to_remove = ['latitude', 'longitude', 'title']
+        # ★修正: titleとtagsをセッションクリア対象に追加★
+        keys_to_remove = ['latitude', 'longitude', 'title', 'tags']
         if any(k in post_data for k in keys_to_remove):
             post_data = {k: v for k, v in post_data.items() if k not in keys_to_remove}
             request.session['post_data'] = post_data
-            logger.info("--- SESSION CLEANUP: Old location and title data cleared from session on Step 1 GET. ---")
+            logger.info("--- SESSION CLEANUP: Old location, title, and tags data cleared from session on Step 1 GET. ---")
 
     if request.method == 'POST':
         form = PhotoPostForm(request.POST, request.FILES, initial=post_data)
@@ -128,20 +128,18 @@ def photo_post_create(request):
                     del request.session['post_photo_data']
             
             
-            # --- 必須フィールドの自動生成/補完 ---
-            # ★削除: タイトル自動生成ロジックを削除★
-            # if not cleaned_data.get('title'):
-            #     comment = cleaned_data.get('comment', '写真報告')
-            #     cleaned_data['title'] = comment[:20] if len(comment) > 0 else '写真報告'
-
-            # タグデータをセッションに安全に保存するため、PKのリストに変換
-            tags_data = cleaned_data.get('tags')
-            if tags_data and hasattr(tags_data[0], 'pk'):
-                cleaned_data['tags'] = [tag.pk for tag in tags_data]
+            # ★修正: tagsデータをセッションに安全に保存するため、単一のPKに変換★
+            # forms.pyでModelChoiceFieldを使用している場合、tags_dataは単一のTagインスタンスである
+            tag_instance = cleaned_data.get('tags')
+            if tag_instance:
+                 # 単一のPKをセッションに保存
+                 cleaned_data['tags'] = tag_instance.pk
+            else:
+                 cleaned_data['tags'] = None
             
-            # --- フォームデータをセッションに保存 (修正点) ---
-            # cleaned_dataから、JSONシリアライズできないphotoオブジェクトを削除する
-            post_data_to_save = {k: v for k, v in cleaned_data.items() if k != 'photo'}
+            # --- フォームデータをセッションに保存 ---
+            # cleaned_dataから、JSONシリアライズできないphotoオブジェクトと、不要なtitleを削除
+            post_data_to_save = {k: v for k, v in cleaned_data.items() if k not in ['photo', 'title']} 
             
             # 緯度・経度の既存値があれば保持
             if post_data.get('latitude'):
@@ -149,10 +147,6 @@ def photo_post_create(request):
             if post_data.get('longitude'):
                 post_data_to_save['longitude'] = post_data.get('longitude')
             
-            # ★修正: titleフィールドがセッションに残らないように明示的に削除 (フォームから削除されている前提)
-            if 'title' in post_data_to_save:
-                del post_data_to_save['title']
-                
             request.session['post_data'] = post_data_to_save
             
             # 基本フロー⑤の起点へ: 位置情報取得の起点となるステップ2へリダイレクト
@@ -165,8 +159,17 @@ def photo_post_create(request):
     # GETリクエスト、またはPOST失敗時
     else:
         # GETリクエストの場合、セッションからデータを取得してフォームに設定
-        # ★修正: titleを初期値から除外★
         initial_data = {k: v for k, v in post_data.items() if k != 'title'}
+        
+        # ★修正: セッションに保存された単一のPKをModelChoiceFieldが期待するインスタンスに変換し直す★
+        tag_pk = initial_data.get('tags')
+        if tag_pk:
+             try:
+                 # ModelChoiceFieldがPKを受け付けるので、Tagインスタンスを渡す
+                 initial_data['tags'] = models.Tag.objects.get(pk=tag_pk)
+             except models.Tag.DoesNotExist:
+                 initial_data['tags'] = None
+                 
         form = PhotoPostForm(initial=initial_data)
     
     # ② システムは投稿画面を表示する
@@ -184,17 +187,18 @@ def photo_post_manual_location(request):
     
     if request.method == 'POST':
         # 代替フロー④-2: 手動入力フォームからのPOST
+        # ManualLocationFormはlocation_nameを扱うフォームとして想定します。
         form = ManualLocationForm(request.POST)
         if form.is_valid():
-            # コメントをセッションデータに追加・更新 (ManualLocationFormはコメント専用)
+            # location_nameをセッションデータに追加・更新
             post_data.update(form.cleaned_data)
             request.session['post_data'] = post_data
             
             # 代替フロー④-3: 投稿内容確認画面へリダイレクト
             return redirect('photo_post_confirm')
         else:
-            # バリデーションに失敗した場合 (コメント必須など)
-            messages.error(request, "入力されたコメントが正しくありません。詳細コメントは必須です。") # メッセージをコメント入力用に調整
+            # バリデーションに失敗した場合
+            messages.error(request, "入力された地名が正しくありません。") 
 
     else:
         # GETリクエストの場合
@@ -219,8 +223,6 @@ def photo_post_confirm(request):
         return redirect('photo_post_create')
     
     # 【位置情報の上書き/確認】
-    # Step2からのJSリダイレクトによる位置情報取得のロジックは、位置情報不要の仕様では機能しないため、
-    # そのまま残しますが、緯度経度は空のままになります。
     latitude_query = request.GET.get('latitude')
     longitude_query = request.GET.get('longitude')
     
@@ -234,34 +236,25 @@ def photo_post_confirm(request):
     if request.method == 'POST':
         try:
             # 緯度・経度の値を取得
-            latitude_val = post_data.get('latitude')
-            longitude_val = post_data.get('longitude')
+            def safe_float(value):
+                try:
+                    return float(value)
+                except (ValueError, TypeError):
+                    # null=True, blank=Trueなので、Noneを返すことでDBのNULLを許容する
+                    return None 
             
-            # NOT NULL制約違反を回避するため、None/空の場合は 0.0 を設定
-            if not latitude_val:
-                latitude_val = 0.0
-            else:
-                try:
-                    latitude_val = float(latitude_val)
-                except ValueError:
-                    latitude_val = 0.0 
-
-            if not longitude_val:
-                longitude_val = 0.0
-            else:
-                try:
-                    longitude_val = float(longitude_val)
-                except ValueError:
-                    longitude_val = 0.0 
+            latitude_val = safe_float(post_data.get('latitude'))
+            longitude_val = safe_float(post_data.get('longitude'))
             
             # 1. セッションデータからインスタンスを作成
             new_post = models.PhotoPost(
                 user=request.user,
-                # ★修正: titleはセッションから取得せず、Noneを設定★
+                # ★修正: titleはセッションから取得せず、Noneを設定 (モデルがnull=Trueなので安全)★
                 title=None, 
                 comment=post_data.get('comment'),
                 latitude=latitude_val, 
                 longitude=longitude_val, 
+                location_name=post_data.get('location_name', '')
             )
             
             # 2. 画像ファイルの再構築とインスタンスへのセット
@@ -278,11 +271,19 @@ def photo_post_confirm(request):
             new_post.full_clean()
             new_post.save()
             
-            # 4. ManyToManyField (タグ) を保存 (PKリストからインスタンスに変換)
-            tags_list = post_data.get('tags', []) 
-            if tags_list:
-                tag_instances = models.Tag.objects.filter(pk__in=tags_list)
-                new_post.tags.set(tag_instances) 
+            # 4. ManyToManyField (タグ) を保存 (単一選択ロジック)
+            tag_pk = post_data.get('tags') 
+            if tag_pk:
+                try:
+                    # 単一のPKからTagインスタンスを取得
+                    tag_instance = models.Tag.objects.get(pk=tag_pk)
+                    # set() メソッドは単一の要素でもリストで渡す
+                    new_post.tags.set([tag_instance]) 
+                except models.Tag.DoesNotExist:
+                     logger.warning(f"投稿保存時にタグID {tag_pk} が見つかりませんでした。タグなしで保存されます。")
+                     new_post.tags.clear()
+            else:
+                 new_post.tags.clear()
             
             # 5. 成功したらセッションデータをクリア
             del request.session['post_data']
@@ -308,8 +309,19 @@ def photo_post_confirm(request):
             return redirect('photo_post_create')
             
     # GETリクエスト時 (確認画面の表示)
+    # ★修正: 確認画面表示のため、単一のPKからTagインスタンスに戻す★
+    tag_pk = post_data.get('tags')
+    selected_tag = None
+    if tag_pk:
+        try:
+            selected_tag = models.Tag.objects.get(pk=tag_pk)
+        except models.Tag.DoesNotExist:
+            logger.error(f"確認画面でタグID {tag_pk} が見つかりません。")
+            pass
+            
     context = {
         'post_data': post_data,
+        'selected_tag': selected_tag, # テンプレートで表示するために追加
         'step': 3
     }
     return render(request, 'main/photo_post_confirm.html', context)
@@ -371,7 +383,12 @@ def admin_post_list(request):
 @user_passes_test(is_staff_user, login_url='/')
 def admin_post_detail(request, post_id):
     post = get_object_or_404(models.PhotoPost, pk=post_id)
-    context = {'post': post}
+    # status編集用のフォームを追加
+    form = StatusUpdateForm(instance=post)
+    context = {
+        'post': post,
+        'form': form
+    }
     return render(request, 'main/admin_post_detail.html', context)
 
 
@@ -384,11 +401,12 @@ def admin_post_status_edit(request, post_id):
         if form.is_valid():
             updated_post = form.save(commit=False)
             
-            if updated_post.status == 'completed' and not updated_post.completed_at:
-                updated_post.completed_at = timezone.now()
-            
-            elif updated_post.status != 'completed' and updated_post.completed_at:
-                updated_post.completed_at = None 
+            # completed_atフィールドがないため、このロジックはコメントアウトするか、モデルにcompleted_atフィールドを追加してください
+            # if updated_post.status == 'completed' and not updated_post.completed_at:
+            #     updated_post.completed_at = timezone.now()
+            # 
+            # elif updated_post.status != 'completed' and updated_post.completed_at:
+            #     updated_post.completed_at = None 
 
             updated_post.save()
             messages.success(request, f"報告 (ID: {post_id}) のステータスを更新しました。")

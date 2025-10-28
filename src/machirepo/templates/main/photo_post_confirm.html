@@ -47,15 +47,20 @@
             <div class="form-group" style="margin-bottom: 1rem;">
                 <label>カテゴリ:</label>
                 <p style="background-color: #f9fafb; padding: 0.75rem; border-radius: 0.375rem; border: 1px solid #e5e7eb; margin:0;">
-                    {% if post_data.tags %}
-                        {% for tag_id in post_data.tags %}
-                            <span style="display: inline-block; background-color: #e0e7ff; color: #4338ca; font-size: 0.75rem; font-weight: 600; padding: 0.125rem 0.5rem; border-radius: 9999px; margin-right: 0.25rem;">
-                                Tag ID: {{ tag_id }}
-                            </span>
-                        {% endfor %}
+                    
+                    {# ★ここを修正しました: post_data.tags のループを削除し、selected_tag を参照します。★ #}
+                    {% if selected_tag %}
+                        <span style="display: inline-block; background-color: #e0e7ff; color: #4338ca; font-size: 0.75rem; font-weight: 600; padding: 0.125rem 0.5rem; border-radius: 9999px; margin-right: 0.25rem;">
+                            {{ selected_tag.name }}
+                        </span>
+                    {% elif post_data.tags is not None %}
+                        {# post_data.tags が None ではなく、Tagが見つからなかった場合（エラー処理） #}
+                        カテゴリ情報にエラー
                     {% else %}
+                        {# post_data.tags が None の場合（選択なし） #}
                         カテゴリなし
                     {% endif %}
+                    
                 </p>
             </div>
             

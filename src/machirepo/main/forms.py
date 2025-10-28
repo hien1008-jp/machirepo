@@ -8,15 +8,23 @@ from . import models
 
 # settings.pyで指定されたユーザーモデルを取得
 User = get_user_model() 
-
+Resident = get_user_model()
 # -----------------------------------------------------
 # 1. 新規登録フォーム (ResidentCreationForm)
 # -----------------------------------------------------
-class ResidentCreationForm(UserCreationForm):
-    """
-    新規ユーザー（居住者）登録用フォーム。
-    UserCreationFormを継承し、氏名とメールアドレスを追加。
-    """
+class ResidentCreationForm(forms.ModelForm):
+    """新規ユーザー登録フォーム (Userモデルが基本)"""
+    # ★ここにパスワードフィールドが必須です★
+    password = forms.CharField(label='パスワード', widget=forms.PasswordInput)
+    password_confirm = forms.CharField(label='パスワード確認', widget=forms.PasswordInput)
+    
+    class Meta:
+        model = Resident
+        fields = ('username', 'email') # ユーザーモデルに依存
+        labels = {
+            'username': 'ユーザー名',
+            'email': 'メールアドレス',
+        }
     
     full_name = forms.CharField(
         label='氏名', 

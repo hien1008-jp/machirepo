@@ -3,6 +3,8 @@ from django.contrib.auth import get_user_model
 from django.core.validators import MinLengthValidator
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 from .models import PhotoPost, Tag 
+from . import models 
+
 
 # settings.pyで指定されたユーザーモデルを取得
 User = get_user_model() 
@@ -105,14 +107,13 @@ class EmailAuthenticationForm(AuthenticationForm):
 # -----------------------------------------------------
 class PhotoPostForm(forms.ModelForm):
    
-    tags = forms.ModelMultipleChoiceField(
-        queryset=Tag.objects.all(),
-        widget=forms.CheckboxSelectMultiple,
-        required=True, # カテゴリは必須
-        label="不具合のカテゴリ (必須)",
-        help_text="該当するカテゴリを一つ以上選択してください。"
+    tags = forms.ModelChoiceField(
+        queryset=models.Tag.objects.all().order_by('name'),
+        empty_label="カテゴリーを選択してください",
+        label="カテゴリ",
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        required=True # 必須にする場合はTrue
     )
-
     # commentフィールドを必須として再定義
     comment = forms.CharField(
         widget=forms.Textarea(attrs={'rows': 4, 'placeholder': '状況を詳しく説明してください (必須)'}),

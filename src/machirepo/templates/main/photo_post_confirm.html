@@ -1,0 +1,77 @@
+{% extends "top_base.html" %}
+
+{% block title %}投稿内容の確認{% endblock %}
+
+{% block content %}
+    <div class="app-container">
+        <header class="app-header">
+            <a href="{% url 'photo_post_manual_location' %}" class="header-link">&lt; 修正する</a>
+            <h2 style="font-size: 1.25rem; font-weight: 700; position: absolute; left: 50%; transform: translateX(-50%);">投稿内容の確認</h2>
+            <span style="width: 80px;"></span>
+        </header>
+        
+        <main class="main-content">
+            
+            {% if messages %}
+            <div style="margin-bottom: 1rem;">
+                {% for message in messages %}
+                <div style="padding: 0.75rem; border-radius: 0.375rem; font-size: 0.875rem; border: 1px solid;
+                    {% if message.tags == 'error' %}background-color: #fee2e2; color: #b91c1c; border-color: #fca5a5;
+                    {% elif message.tags == 'success' %}background-color: #d1fae5; color: #065f46; border-color: #a7f3d0;
+                    {% else %}background-color: #eff6ff; color: #1d4ed8; border-color: #93c5fd;{% endif %}">
+                    {{ message }}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <div class="form-group" style="margin-bottom: 1rem;">
+                <label>写真:</label>
+                <div style="background-color: #e5e7eb; border-radius: 0.375rem; height: 12rem; display: flex; align-items: center; justify-content: center; color: #6b7280;">
+                    {% if request.session.post_photo_data %}
+                        写真ファイルがセッションに存在します
+                    {% else %}
+                        写真が見つかりません
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 1rem;">
+                <label>場所:</label>
+                <div style="background-color: #f9fafb; padding: 0.75rem; border-radius: 0.375rem; border: 1px solid #e5e7eb; margin:0; line-height: 1.6;">
+                    緯度: {{ post_data.latitude|default:"N/A" }}<br>
+                    経度: {{ post_data.longitude|default:"N/A" }}
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 1rem;">
+                <label>カテゴリ:</label>
+                <p style="background-color: #f9fafb; padding: 0.75rem; border-radius: 0.375rem; border: 1px solid #e5e7eb; margin:0;">
+                    {% if post_data.tags %}
+                        {% for tag_id in post_data.tags %}
+                            <span style="display: inline-block; background-color: #e0e7ff; color: #4338ca; font-size: 0.75rem; font-weight: 600; padding: 0.125rem 0.5rem; border-radius: 9999px; margin-right: 0.25rem;">
+                                Tag ID: {{ tag_id }}
+                            </span>
+                        {% endfor %}
+                    {% else %}
+                        カテゴリなし
+                    {% endif %}
+                </p>
+            </div>
+            
+            <div class="form-group" style="margin-bottom: 1rem;">
+                <label>詳細:</label>
+                <p style="background-color: #f9fafb; padding: 0.75rem; border-radius: 0.375rem; border: 1px solid #e5e7eb; line-height: 1.6; margin:0; white-space: pre-wrap;">
+                    {{ post_data.comment|default:"コメントなし" }}
+                </p>
+            </div>
+        </main>
+        
+        <footer class="app-footer">
+            <form method="post" action="{% url 'photo_post_confirm' %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-primary" style="width: 100%;">この内容で投稿する</button>
+            </form>
+        </footer>
+    </div>
+{% endblock %}

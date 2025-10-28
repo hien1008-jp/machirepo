@@ -1,0 +1,296 @@
+{% extends 'top_base.html' %} 
+
+{% load static %}
+
+{% block title %}新規投稿{% endblock %} 
+
+{% block extra_head %}
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+        crossorigin=""/>
+    <style>
+        /* ユーザーの参照元HTMLに基づいた基本的なスタイル定義 */
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #1f2937; /* Gray-800 */
+        }
+        .input-style,
+        .select-style,
+        .textarea-style {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 1px solid #d1d5db; /* Gray-300 */
+            border-radius: 0.375rem;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+            font-size: 1rem;
+        }
+        .textarea-style {
+            resize: vertical;
+        }
+        .map-container {
+            height: 10rem; /* 参照に合わせた高さ */
+            border-radius: 0.375rem;
+            overflow: hidden;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+        }
+        .errorlist {
+            color: #ef4444; /* Red-500 */
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+            list-style: none;
+            padding-left: 0;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="app-container">
+        <header class="app-header">
+            <!-- 'home.html' を Django の URL タグに置換 -->
+            <a href="{% url 'user_home' %}" class="header-link" style="font-weight: 600; color: #10b981;">&lt; 戻る</a>
+            <h2 style="font-size: 1.25rem; font-weight: 700; position: absolute; left: 50%; transform: translateX(-50%);">新規投稿</h2>
+            <span style="width: 50px;"></span>
+        </header>
+
+        <form method="POST" enctype="multipart/form-data">
+            {% csrf_token %}
+            
+            <main class="main-content">
+                
+                <!-- ① 不具合箇所の写真 -->
+                <div class="form-group">
+                    <label>① 不具合箇所の写真 (必須)</label>
+                    <div style="border: 2px dashed #d1d5db; border-radius: 0.375rem; padding: 2rem; text-align: center; color: #6b7280; position: relative;">
+                        <!-- Django Form field for Photo -->
+                        {{ form.photo }}
+                        <span style="display: block; margin-top: 0.5rem;">
+                            写真をアップロード
+                            {% if form.photo.errors %}{{ form.photo.errors }}{% endif %}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- ② 場所の指定 -->
+                <div class="form-group">
+                    <label>② 場所の指定 (自動取得中)</label>
+                    <div id="map" class="map-container">
+                        <!-- ここに Leaflet マップが表示されます -->
+                    </div>
+                    <p id="location-status" style="margin-top: 0.5rem; font-size: 0.875rem; color: #10b981;">
+                        位置情報を取得中です...
+                    </p>
+                    
+                    <!-- 緯度、経度、地名を保持する隠しフィールド -->
+                    <input type="hidden" id="latitude" name="latitude" value="{{ default_lat }}">
+                    <input type="hidden" id="longitude" name="longitude" value="{{ default_lng }}">
+                    <input type="hidden" id="location_name" name="location_name" value="">
+                    
+                    <!-- フォームのその他の位置情報エラー表示 -->
+                    {% if form.non_field_errors %}<div class="errorlist">{{ form.non_field_errors }}</div>{% endif %}
+                </div>
+
+                <!-- ③ カテゴリ (タグ) -->
+                <div class="form-group">
+                    <label for="{{ form.tags.id_for_label }}">③ カテゴリ (必須)</label>
+                    <!-- Django Form field for Tags (ModelMultipleChoiceField -> SelectMultiple) -->
+                    <!-- 参照HTMLは単一選択だったので、見た目を合わせるためCSSでSelectMultipleを調整するか、
+                         ビュー側でModelChoiceFieldに変更すべきですが、ここではデフォルトのModelMultipleChoiceFieldを使用します。
+                         ユーザーが複数のタグを選択できる前提とします。 -->
+                    {{ form.tags }}
+                    {% if form.tags.errors %}{{ form.tags.errors }}{% endif %}
+                </div>
+                
+                <!-- ④ 詳細 (コメント) -->
+                <div class="form-group">
+                    <label for="{{ form.comment.id_for_label }}">④ 詳細</label>
+                    <!-- Django Form field for Comment -->
+                    <textarea class="textarea-style" id="{{ form.comment.id_for_label }}" name="{{ form.comment.html_name }}" rows="4">{{ form.comment.value|default:"" }}</textarea>
+                    {% if form.comment.errors %}{{ form.comment.errors }}{% endif %}
+                </div>
+                
+                <!-- タイトルフィールド（参照HTMLにはなかったが、モデルに必須のため追加） -->
+                <div class="form-group" style="display: none;">
+                    <label for="{{ form.title.id_for_label }}">タイトル (必須)</label>
+                    <input type="text" class="input-style" id="{{ form.title.id_for_label }}" name="{{ form.title.html_name }}" value="{{ form.title.value|default:"" }}">
+                    {% if form.title.errors %}{{ form.title.errors }}{% endif %}
+                    <p style="font-size: 0.75rem; color: #9ca3af;">タイトルは必須です。詳細内容の要約を推奨します。</p>
+                </div>
+            </main>
+
+            <footer class="app-footer">
+                <!-- 'confirm-post.html' を Django の URL タグに置換 -->
+                <button type="submit" class="btn btn-primary" style="width: 100%;">確認画面へ</button>
+                <p id="error-manual-link" style="text-align: center; color: #ef4444; font-size: 0.875rem; margin-top: 0.5rem; display: none;">
+                    位置情報の取得に失敗しました。<a href="{% url 'photo_post_manual_location' %}" style="text-decoration: underline;">手動で入力する</a>
+                </p>
+            </footer>
+        </form>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20n6g9zXwYg68F9eWvX9bVb8z+qW44Y3vD3Vf+wKz9A="
+        crossorigin=""></script>
+
+    <script>
+        const mapElement = document.getElementById('map');
+        const latInput = document.getElementById('latitude');
+        const lngInput = document.getElementById('longitude');
+        const locationStatus = document.getElementById('location-status');
+        const errorManualLink = document.getElementById('error-manual-link');
+        const submitButton = document.querySelector('button[type="submit"]');
+
+        let map, marker;
+
+        // Leaflet マップを初期化
+        function initializeMap(lat, lng) {
+            // map変数がすでに初期化されている場合は、再初期化を避ける
+            if (map) {
+                map.remove();
+            }
+
+            map = L.map(mapElement).setView([lat, lng], 16);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+
+            marker = L.marker([lat, lng], { draggable: true }).addTo(map);
+            
+            // マーカーをドラッグしたときの位置情報を更新
+            marker.on('dragend', function (e) {
+                const newPos = marker.getLatLng();
+                updateLocation(newPos.lat, newPos.lng);
+            });
+            
+            // マップをクリックしたとき、マーカーを移動し位置情報を更新
+            map.on('click', function (e) {
+                marker.setLatLng(e.latlng);
+                updateLocation(e.latlng.lat, e.latlng.lng);
+            });
+            
+            // 初回表示時にマップの位置情報を入力フィールドにセット
+            updateLocation(lat, lng, '初期位置'); 
+        }
+
+        // 緯度経度を更新し、ステータスを表示する
+        function updateLocation(lat, lng, statusText = 'マーカー位置') {
+            latInput.value = lat;
+            lngInput.value = lng;
+            locationStatus.textContent = `現在地: 緯度 ${lat.toFixed(6)}, 経度 ${lng.toFixed(6)} (${statusText})`;
+            locationStatus.style.color = '#10b981'; // 成功時の色
+            submitButton.disabled = false; // フォーム送信を有効化
+        }
+
+        // 現在地を取得
+        function getGeolocation() {
+            if (!navigator.geolocation) {
+                handleLocationError('お使いのブラウザは地理位置情報に対応していません。');
+                return;
+            }
+
+            locationStatus.textContent = '位置情報を取得中...';
+            submitButton.disabled = true;
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    
+                    initializeMap(lat, lng);
+                    updateLocation(lat, lng, 'GPSで取得');
+                    errorManualLink.style.display = 'none';
+                },
+                (error) => {
+                    // エラーコードに応じてメッセージを設定
+                    let message;
+                    switch (error.code) {
+                        case error.PERMISSION_DENIED:
+                            message = "位置情報の利用が許可されませんでした。";
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            message = "位置情報を取得できませんでした。";
+                            break;
+                        case error.TIMEOUT:
+                            message = "位置情報の取得がタイムアウトしました。";
+                            break;
+                        default:
+                            message = "位置情報の取得に失敗しました。";
+                    }
+                    handleLocationError(message);
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000, // 10秒でタイムアウト
+                    maximumAge: 0
+                }
+            );
+        }
+
+        // 位置情報取得失敗時の処理
+        function handleLocationError(message) {
+            console.error('Geolocation Error:', message);
+            
+            // デフォルト座標でマップを初期化
+            const defaultLat = parseFloat(latInput.value); // {{ default_lat }}
+            const defaultLng = parseFloat(lngInput.value); // {{ default_lng }}
+
+            initializeMap(defaultLat, defaultLng);
+            
+            // 緯度経度を 0.0 に設定し、ビューで手動入力画面へリダイレクトさせる
+            latInput.value = '0.0';
+            lngInput.value = '0.0';
+
+            locationStatus.textContent = '位置情報の取得に失敗。マーカーで位置を調整するか、手動で入力してください。';
+            locationStatus.style.color = '#ef4444'; // エラー時の色
+            
+            // 手動入力画面へのリンクを表示
+            errorManualLink.style.display = 'block';
+            submitButton.disabled = false; // フォーム送信は有効にする（ビュー側で手動入力へリダイレクトされるため）
+        }
+
+        window.onload = function() {
+            // ページロード時に現在地を取得してマップを表示
+            getGeolocation();
+            
+            // DjangoのSelectMultipleフィールドはデフォルトで複数選択に見えるため、単一選択に見えるように調整
+            const tagsSelect = document.getElementById('{{ form.tags.id_for_label }}');
+            if (tagsSelect && tagsSelect.tagName === 'SELECT') {
+                tagsSelect.className = 'select-style';
+                // タグの初期値が設定されていない場合、プレースホルダーとして空のオプションを追加
+                if (tagsSelect.options.length > 0 && tagsSelect.value === "") {
+                     tagsSelect.insertAdjacentHTML('afterbegin', '<option value="" selected disabled>--- カテゴリを選択してください ---</option>');
+                }
+            }
+
+             // 画像入力フィールドを非表示にし、親divをクリックしたときに開く
+             const photoInput = document.getElementById('{{ form.photo.id_for_label }}');
+             if (photoInput) {
+                photoInput.style.opacity = '0';
+                photoInput.style.position = 'absolute';
+                photoInput.style.top = '0';
+                photoInput.style.left = '0';
+                photoInput.style.width = '100%';
+                photoInput.style.height = '100%';
+                photoInput.style.cursor = 'pointer';
+             }
+
+             // タイトルフィールドは詳細の要約として自動補完させたいが、
+             // ユーザーが見えない形で必須項目を埋めるために一旦非表示のままにしておく。
+             // フォームのその他のフィールドにスタイルを適用
+             document.getElementById('{{ form.title.id_for_label }}').className = 'input-style';
+             
+             // テキストエリアにスタイルを適用
+             document.getElementById('{{ form.comment.id_for_label }}').className = 'textarea-style';
+        };
+    </script>
+{% endblock %}

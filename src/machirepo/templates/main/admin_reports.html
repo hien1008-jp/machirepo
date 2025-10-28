@@ -1,0 +1,147 @@
+{% extends 'top_base.html' %} 
+
+{% block title %}管理者トップページ{% endblock %} 
+
+{% block content %}
+<body class="p-4 md:p-8">
+    <!-- ページコンテナとヘッダーのクラス名は、参照元HTMLに合わせ、Tailwindクラスから移行します -->
+    <div class="page-container">
+        <!-- app-headerとtitleクラスは外部CSS依存に変更 -->
+        <header class="app-header">
+            <div class="title">まちレポ 管理者ページ</div>
+            <!-- ログアウトリンク (urls.pyの'logout'を使用) -->
+            <a href="{% url 'logout' %}" class="header-link">ログアウト</a>
+        </header>
+
+        <main class="main-content">
+            <!-- 管理メニューに戻るリンクのスタイルをインラインからCSSクラスに変更 -->
+            <a href="{% url 'admin_home' %}" class="link-secondary" style="margin: 0 0 1.5rem 0; text-align: left;">
+                 &lt; 管理メニューに戻る
+            </a>
+
+            <h2 style="font-size: 1.5rem; font-weight: 700;">報告の確認・記録</h2>
+            
+            <!-- フィルタリングフォームのレイアウトも参照元HTMLのスタイルに近づけるためTailwindクラスから移行 -->
+            <form method="get" action="{% url 'admin_post_list' %}" class="filter-container" style="display: flex; gap: 1rem; margin-bottom: 1.5rem; background-color: #f9fafb; padding: 1rem; border-radius: 8px;">
+                
+                <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                    <label for="filter-status">ステータスで絞り込み</label>
+                    <!-- form-selectクラスは外部CSSにあると仮定します -->
+                    <select id="filter-status" name="status" class="form-select">
+                        <option value="">すべて</option>
+                        {% for value, label in posts.model.STATUS_CHOICES %}
+                            <option value="{{ value }}" {% if status_filter == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- TODO: タグでの絞り込みは実装が必要なため、一旦ダミーのまま -->
+                <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                    <label for="filter-tag">タグで絞り込み (TODO)</label>
+                    <select id="filter-tag" disabled class="form-select">
+                        <option>すべて</option>
+                    </select>
+                </div>
+                
+                <!-- TODO: 優先度での絞り込みは実装が必要なため、一旦ダミーのまま -->
+                <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                    <label for="filter-priority">優先度で絞り込み (TODO)</label>
+                    <select id="filter-priority" disabled class="form-select">
+                        <option>すべて</option>
+                    </select>
+                </div>
+
+                <!-- 絞り込みボタンのクラスも外部CSS依存に変更 -->
+                <div class="form-group flex items-end" style="flex: 1; margin-bottom: 0;">
+                    <button type="submit" class="w-full button-primary">
+                        絞り込む
+                    </button>
+                </div>
+            </form>
+            
+            <p style="margin-bottom: 1rem; font-size: 0.875rem; color: #6b7280;">表示件数: {{ posts|length }} 件</p>
+
+            <!-- 報告テーブル -->
+            <div class="table-responsive">
+                <table class="admin-table">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th>投稿日時</th>
+                            <th>タイトル / カテゴリ</th>
+                            <th>報告者</th>
+                            <th>ステータス</th>
+                            <th>優先度</th>
+                            <th>詳細</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for post in posts %}
+                            <tr>
+                                <!-- 投稿日時 -->
+                                <td>{{ post.posted_at|date:"Y/m/d H:i" }}</td>
+                                
+                                <!-- タイトル / カテゴリ -->
+                                <td>
+                                    <span class="block font-bold" style="font-size: 0.875rem;">{{ post.title }}</span>
+                                    <span style="font-size: 0.75rem; color: #6b7280;">
+                                        {% if post.tag_set.first %}
+                                            タグ: {{ post.tag_set.first.name }}
+                                        {% else %}
+                                            (タグなし)
+                                        {% endif %}
+                                    </span>
+                                </td>
+                                
+                                <!-- 報告者 -->
+                                <td>
+                                    {% if post.user.last_name or post.user.first_name %}
+                                        {{ post.user.last_name }} {{ post.user.first_name }}
+                                    {% else %}
+                                        匿名ユーザー
+                                    {% endif %}
+                                </td>
+                                
+                                <!-- ステータス (クラス名変更) -->
+                                <td>
+                                    <span class="status-badge 
+                                        {% if post.status == 'new' %}status-new
+                                        {% elif post.status == 'in_progress' %}status-pending
+                                        {% elif post.status == 'completed' %}status-complete
+                                        {% elif post.status == 'not_required' %}status-not-applicable
+                                        {% endif %}">
+                                        {{ post.get_status_display }}
+                                    </span>
+                                </td>
+                                
+                                <!-- 優先度 (クラス名変更) -->
+                                <td>
+                                    {% if post.priority %}
+                                        <span class="priority-badge priority-{{ post.priority }}">
+                                            {{ post.get_priority_display }}
+                                        </span>
+                                    {% else %}
+                                        <span class="priority-badge priority-none">--</span>
+                                    {% endif %}
+                                </td>
+
+                                <!-- アクション -->
+                                <td>
+                                    <!-- URL修正済み: 'admin_post_detail' を直接使用 -->
+                                    <a href="{% url 'admin_post_detail' post.id %}" class="link-primary">詳細を見る</a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            {% if not posts %}
+                <div class="mt-8 p-8 text-center text-gray-500 border border-dashed border-gray-300 rounded-lg" style="background-color: #f3f4f6;">
+                    <p class="font-semibold text-lg">該当する報告はありません。</p>
+                    <p class="mt-1 text-sm">現在のフィルタリング条件を変更してみてください。</p>
+                </div>
+            {% endif %}
+        </main>
+    </div>
+</body>
+{% endblock %}
